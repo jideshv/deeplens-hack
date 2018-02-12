@@ -1,0 +1,43 @@
+﻿AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Outputs the JPEG bits to a FIFO file on AWS DeepLens
+Resources:
+  deeplensfacedetection:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: greengrass_face_detection.function_handler
+      Runtime: python2.7
+      CodeUri: .
+      Description: Outputs the JPEG bits to a FIFO file on AWS DeepLens
+      MemorySize: 1536
+      Timeout: 3
+      Role: 'arn:aws:iam::<your_aws_account_number>:role/AWSDeepLensLambdaRole'
+  rekognizeEmotions:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: lambda_function.lambda_handler
+      Runtime: python2.7
+      CodeUri: .
+      Description: An Amazon S3 trigger that uses rekognition APIs to detect faces
+      MemorySize: 128
+      Timeout: 3
+      Role: 'arn:aws:iam::<your_aws_account_number>:role/service-role/rekognize-faces-role'
+      Events:
+        BucketEvent1:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: Bucket1
+            Events:
+              - 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: faces/
+                  - Name: suffix
+                    Value: jpg
+      Tags:
+        'lambda-console:blueprint': rekognition-python
+  Bucket1:
+    Type: 'AWS::S3::Bucket'
