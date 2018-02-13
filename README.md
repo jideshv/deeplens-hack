@@ -5,7 +5,7 @@ One of the challenges with audience measurement systems is that they are heavily
 
 The solution involves the use of a DeepLens device to recognize faces using a local infrence and send only the clips of the faces to S3. A lambda monitoring the S3 bucket will then call Rekognition to get the emotions for each face. The data is then fed to DynamoDB for archival purposes and CloudWatch for real time monitoring of the metrics. 
 
-It would not be practial to send the entire frame in real time to rekognition thus the local infrence on the DeepLens makes for a much more optimized solution where outbound bandwidth no longer becomes an issue. This enables the following scenarios that would otherwise not be practical without local infrence: 
+It would not be practial to send the entire frame in real time to rekognition thus the local inference on the DeepLens makes for a much more optimized solution where outbound bandwidth no longer becomes an issue. This enables the following scenarios that would otherwise not be practical without local infrence: 
 
 * More accurate ratings of households particapting in TV rating groups
 * Presenters can measure how their audience reacted to differnet parts of their presentation instead of only relying on written feedback.  Use at re:invent next year?
@@ -19,20 +19,22 @@ Overall, the power of combining local inference with cloud based deep learning s
 
 This lambda runs on the deeplens camera and is responsible for the inference that detects faces
 in a video stream.
+
 For each face it detects it pushed the croped face image to S3 for further analysis 
 
 ### rekognize emotions
 
 This lambda is triggered by a putObject event from the deeplens face detection lambda and calls
 [AWS Rekognition](https://aws.amazon.com/rekognition/) to get a list of emotions for each face.
-It then stores each emotion's probablity in a DynamoDB table
+It then stores each emotion's probablity in a DynamoDB table as well as send this to CloudWatch
+to show realtime data for the event.
 
 ## Development and Testing
 
 Setup your deeplens camera and create all the required IAM roles
 
 Create a new project using the **Face Detection** template
-We'll be using the prebuild model for our demo.
+We'll be using the pre-built Face Recognition model from the DeepLens templates for our demo. Therefore, we have not included a sperate model json file since that one is available on S3.
 
 Then create the required resources:
 * 2 lambda functions
@@ -47,7 +49,6 @@ To build the lambda source packages run the following command:
 
 ```
 make package profile=<your_aws_profile>
-
 ```
 
 ### Deployment
@@ -56,7 +57,6 @@ To deploy the lambda functions run the following command:
 
 ```
 make deploy profile=<your_aws_profile>
-
 ```
 
 ### Permissions
