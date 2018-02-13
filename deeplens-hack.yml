@@ -2,7 +2,7 @@
 Transform: 'AWS::Serverless-2016-10-31'
 Description: Outputs the JPEG bits to a FIFO file on AWS DeepLens
 Resources:
-  deeplensfacedetection:
+  deeplensFaceDetection:
     Type: 'AWS::Serverless::Function'
     Properties:
       Handler: greengrass_face_detection.function_handler
@@ -11,7 +11,12 @@ Resources:
       Description: Outputs the JPEG bits to a FIFO file on AWS DeepLens
       MemorySize: 1536
       Timeout: 3
-      Role: 'arn:aws:iam::<your_aws_account_number>:role/AWSDeepLensLambdaRole'
+      Role:
+        !Join
+          - ''
+          - - 'arn:aws:iam::'
+            - !Ref 'AWS::AccountId'
+            - ':role/AWSDeepLensLambdaRole'
   rekognizeEmotions:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -21,13 +26,18 @@ Resources:
       Description: An Amazon S3 trigger that uses rekognition APIs to detect faces
       MemorySize: 128
       Timeout: 3
-      Role: 'arn:aws:iam::<your_aws_account_number>:role/service-role/rekognize-faces-role'
+      Role:
+        !Join
+          - ''
+          - - 'arn:aws:iam::'
+            - !Ref 'AWS::AccountId'
+            - ':role/service-role/rekognize-faces-role'
       Events:
         BucketEvent1:
           Type: S3
           Properties:
             Bucket:
-              Ref: Bucket1
+              Ref: DeeplensHackBucket
             Events:
               - 's3:ObjectCreated:*'
             Filter:
@@ -39,5 +49,27 @@ Resources:
                     Value: jpg
       Tags:
         'lambda-console:blueprint': rekognition-python
-  Bucket1:
+  DeeplensHackBucket:
     Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: 'BucketOwnerFullControl'
+      BucketName:
+        !Join
+          - ''
+          - - 'deeplens-hack-'
+            - !Ref 'AWS::AccountId'
+  RekognizeFacesDDB:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "s3key"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "s3key"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+      TableName: "recognize-faces"

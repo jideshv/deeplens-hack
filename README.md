@@ -27,9 +27,19 @@ This lambda is triggered by a putObject event from the deeplens face detection l
 [AWS Rekognition](https://aws.amazon.com/rekognition/) to get a list of emotions for each face.
 It then stores each emotion's probablity in a DynamoDB table
 
-## Development
+## Development and Testing
 
-Make sure you've created all the required IAM roles when registering your Deeplens camera
+Setup your deeplens camera and create all the required IAM roles
+
+Create a new project using the **Face Detection** template
+We'll be using the prebuild model for our demo.
+
+Then create the required resources:
+* 2 lambda functions
+* 1 S3 bucket
+* 1 DynamoDB table
+
+Using [AWS Serverless Application Model, or SAM](https://github.com/awslabs/serverless-application-model) deploy the above resources. 
 
 ### Build
 
@@ -49,6 +59,35 @@ make deploy profile=<your_aws_profile>
 
 ```
 
-Then go to the [deeplens console]() and edit your project deeplensfacedetection version to the latest
+### Permissions
+
+The `deeplensFaceDetection` lambda function running on the deeplens camera needs to 
+be able to put objects on the S3 bucket you've created above so give it permissions
+to the Role created previously when creating a new deeplens project. 
+
+- Make sure it has permissions to putObjects to S3
+
+the `rekognizeEmotions` lambda function needs access to the images on the S3 bucket 
+so it can get the emotions, it needs access to AWS Rekognition, access to DynamoDB 
+and CloudWatch to push the metrics for the live dashboard
+
+Make sure `rekognizeEmotions` has permissions to:
+- S3 bucket 
+- DynamoDB Table
+- rekognition
+- CloudWatch 
+
+Then go to the [deeplens console]() and edit your project function and point it
+to the newly created `deeplensFaceDetection` lambda function
 
 Then select the project and deploy it to the device. 
+
+Subscribe to the channel on the [IoT console](https://console.aws.amazon.com/iot/home?region=us-east-1#/test) and look messages `Face pushed to S3` which indicate the images are
+being pushed successfully to S3.
+
+Then go to the [cloudwatch console](https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#)
+and create a new Dashboad, select `Add Widget`, `Line`, `Custom Namespaces` and select
+all the metrics.
+Make sure to enable `Auto refresh` and you should start seeing the graph of the emotions
+detected. 
+

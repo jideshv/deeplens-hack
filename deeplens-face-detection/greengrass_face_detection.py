@@ -10,8 +10,6 @@ import time
 import awscam
 import cv2
 from threading import Thread
-import json
-import boto
 import boto3
 
 # Creating a greengrass core sdk client
@@ -23,8 +21,10 @@ client = greengrasssdk.client('iot-data')
 iotTopic = '$aws/things/{}/infer'.format(os.environ['AWS_IOT_THING_NAME'])
 
 ret, frame = awscam.getLastFrame()
-ret,jpeg = cv2.imencode('.jpg', frame)
+ret, jpeg = cv2.imencode('.jpg', frame)
+
 Write_To_FIFO = True
+
 class FIFO_Thread(Thread):
     def __init__(self):
         ''' Constructor. '''
@@ -34,7 +34,7 @@ class FIFO_Thread(Thread):
         fifo_path = "/tmp/results.mjpeg"
         if not os.path.exists(fifo_path):
             os.mkfifo(fifo_path)
-        f = open(fifo_path,'w')
+        f = open(fifo_path, 'w')
         client.publish(topic=iotTopic, payload="Opened Pipe")
         while Write_To_FIFO:
             try:
@@ -44,7 +44,9 @@ class FIFO_Thread(Thread):
 
 def push_to_s3(img, index):
     try:
-        bucket_name = 'deeplens-hack'
+        account_id = boto3.client("sts").get_caller_identity()["Account"]
+        bucket_name = "deeplens-hack-{}".format(account_id)
+
         timestamp = int(time.time())
         now = datetime.datetime.now()
         key = "faces/{}_{}/{}_{}/{}_{}.jpg".format(now.month, now.day,
@@ -53,12 +55,12 @@ def push_to_s3(img, index):
 
         s3 = boto3.client('s3')
 
-        encode_param=[int(cv2.IMWRITE_JPEG_QUALITY),90]
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
         _, jpg_data = cv2.imencode('.jpg', img, encode_param)
         response = s3.put_object(ACL='public-read',
-                                Body=jpg_data.tostring(),
-                                Bucket=bucket_name,
-                                Key=key)
+                                 Body=jpg_data.tostring(),
+                                 Bucket=bucket_name,
+                                 Key=key)
 
         client.publish(topic=iotTopic, payload="Response: {}".format(response))
         client.publish(topic=iotTopic, payload="Face pushed to S3")
@@ -117,36 +119,20 @@ def greengrass_infinite_infer_run():
                 xmax = int( xscale * obj['xmax'] ) + int((obj['xmax'] - input_width/2) + input_width/2)
                 ymax = int( yscale * obj['ymax'] )
 
-                # crop_img = frame[ymin:ymax, xmin:xmax]
-                crop_img = frame[(ymin-offset):(ymax+offset), (xmin-offset):(xmax+offset)]
-
-                sizes = {
-                    "xmin": xmin,
-                    "xmax": xmax,
-                    "ymin": ymin,
-                    "ymax": ymax,
-                    "xscale": xscale,
-                    "yscale": yscale,
-                    "crop_img.shape": crop_img.shape,
-                    "frameResize": frameResize,
-                    "input_width": input_width,
-                    "input_height": input_height
-                }
-
-                # client.publish(topic=iotTopic, payload = "Sizes: {}".format(sizes))
+                crop_img = frame[ymin:ymax, xmin:xmax]
 
                 push_to_s3(crop_img, i)
 
-
-                # cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (255, 165, 20), 4)
+                cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (255, 165, 20), 4)
                 label += '"{}": {:.2f},'.format(str(obj['label']), obj['prob'] )
                 label_show = '{}: {:.2f}'.format(str(obj['label']), obj['prob'] )
-                # cv2.putText(frame, label_show, (xmin, ymin-15),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 165, 20), 4)
+                cv2.putText(frame, label_show, (xmin, ymin-15),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 165, 20), 4)
             label += '"null": 0.0'
             label += '}'
-            client.publish(topic=iotTopic, payload = label)
+            client.publish(topic=iotTopic, payload=label)
             global jpeg
-            ret,jpeg = cv2.imencode('.jpg', frame)
+            ret, jpeg = cv2.imencode('.jpg', frame)
 
     except Exception as e:
         msg = "Test failed: " + str(e)

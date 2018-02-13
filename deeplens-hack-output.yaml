@@ -1,27 +1,52 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Outputs the JPEG bits to a FIFO file on AWS DeepLens
 Resources:
-  Bucket1:
-    Type: AWS::S3::Bucket
-  deeplensfacedetection:
+  DeeplensHackBucket:
     Properties:
-      CodeUri: s3://deeplens-face-detection/bba29ac6b82d675e6fd5b0cb251a241d
+      AccessControl: BucketOwnerFullControl
+      BucketName:
+        Fn::Join:
+        - ''
+        - - deeplens-hack-
+          - Ref: AWS::AccountId
+    Type: AWS::S3::Bucket
+  RekognizeFacesDDB:
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: s3key
+        AttributeType: S
+      KeySchema:
+      - AttributeName: s3key
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+      TableName: recognize-faces
+    Type: AWS::DynamoDB::Table
+  deeplensFaceDetection:
+    Properties:
+      CodeUri: s3://deeplens-face-detection/a81b9438deaf80a5c500ca5307f46368
       Description: Outputs the JPEG bits to a FIFO file on AWS DeepLens
       Handler: greengrass_face_detection.function_handler
       MemorySize: 1536
-      Role: arn:aws:iam::<your_aws_account_number>:role/AWSDeepLensLambdaRole
+      Role:
+        Fn::Join:
+        - ''
+        - - 'arn:aws:iam::'
+          - Ref: AWS::AccountId
+          - :role/AWSDeepLensLambdaRole
       Runtime: python2.7
       Timeout: 3
     Type: AWS::Serverless::Function
   rekognizeEmotions:
     Properties:
-      CodeUri: s3://deeplens-face-detection/bba29ac6b82d675e6fd5b0cb251a241d
+      CodeUri: s3://deeplens-face-detection/a81b9438deaf80a5c500ca5307f46368
       Description: An Amazon S3 trigger that uses rekognition APIs to detect faces
       Events:
         BucketEvent1:
           Properties:
             Bucket:
-              Ref: Bucket1
+              Ref: DeeplensHackBucket
             Events:
             - s3:ObjectCreated:*
             Filter:
@@ -34,7 +59,12 @@ Resources:
           Type: S3
       Handler: lambda_function.lambda_handler
       MemorySize: 128
-      Role: arn:aws:iam::<your_aws_account_number>:role/service-role/rekognize-faces-role
+      Role:
+        Fn::Join:
+        - ''
+        - - 'arn:aws:iam::'
+          - Ref: AWS::AccountId
+          - :role/service-role/rekognize-faces-role
       Runtime: python2.7
       Tags:
         lambda-console:blueprint: rekognition-python

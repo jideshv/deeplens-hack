@@ -1,14 +1,13 @@
 from __future__ import print_function
 
 import boto3
-import json
 import urllib
 import datetime
 
 print('Loading function')
 
 rekognition = boto3.client('rekognition')
-cloudwatch  = boto3.client('cloudwatch')
+cloudwatch = boto3.client('cloudwatch')
 
 
 # --------------- Helper Function to call CloudWatch APIs ------------------
@@ -36,28 +35,31 @@ def push_to_cloudwatch(name, value, timestamp):
 
 def detect_faces(bucket, key):
     print("Key: {}".format(key))
-    response = rekognition.detect_faces(Image={"S3Object": {"Bucket": bucket, "Name": key}}, Attributes=['ALL'])
+    response = rekognition.detect_faces(Image={"S3Object":
+                                               {"Bucket": bucket,
+                                                "Name": key}},
+                                        Attributes=['ALL'])
 
     if not response['FaceDetails']:
         print ("No Face Details Found!")
         return response
-        
+
     push = False
     timestamp = float(key.split('_')[2].split('/')[1])
     dynamo_obj = {}
     dynamo_obj['s3key'] = key
 
-    for index,item in enumerate(response['FaceDetails'][0]['Emotions']):
+    for index, item in enumerate(response['FaceDetails'][0]['Emotions']):
         print("Item: {}".format(item))
         if int(item['Confidence']) > 10:
             push = True
             dynamo_obj[item['Type']] = str(round(item["Confidence"], 2))
             push_to_cloudwatch(item['Type'], round(item["Confidence"], 2), timestamp)
 
-    if push: # Push only if at least on emotion was found 
+    if push:  # Push only if at least on emotion was found
         table = boto3.resource('dynamodb').Table('rekognize-faces')
         table.put_item(Item=dynamo_obj)
-        
+
     return response
 
 # --------------- Main handler ------------------
