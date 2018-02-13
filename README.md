@@ -1,5 +1,5 @@
-# Audience Emotion Rekognition 
-## Deeplens Hackathon 
+# Deep Emotion Audience Rekognition (DEAR)
+## Deeplens Hackathon Submission
 
 One of the challenges with audience measurement systems is that they are heavily reliant on the quality of responses from the survey participants. Our idea is to reduce the overhead involved in recognizing emotions in audiences and also increase reliablity of the measurements at the same time.
 
