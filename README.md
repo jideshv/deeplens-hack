@@ -13,6 +13,8 @@ It would not be practial to send the entire frame in real time to rekognition th
 
 Overall, the power of combining local inference with cloud based deep learning services can make otherwise unpractical measurements incredibly easy.  Below are the techincal details of how all of this works.
 
+You can see a demo here: [DEAR Demo](https://youtu.be/XJwzzYciQjM)
+
 ## Lambda functions
 
 ### deeplens face detection
